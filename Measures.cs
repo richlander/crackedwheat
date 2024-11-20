@@ -13,7 +13,7 @@ public class Measures
         return new(name, open, score);
     }
 
-    public static bool IsBot(string name) => name.EndsWith("[bot]");
+    public static bool IsBot(string name) => name?.EndsWith("[bot]") ?? false;
 
     public static IEnumerable<DateTimeOffset> FilterOutBots(IEnumerable<(DateTimeOffset, string)> values, int count) => 
         values.Where(v => !v.Item2.EndsWith("[bot]")).Select(v => v.Item1).Take(count);
