@@ -5,18 +5,7 @@ namespace CrackedWheat;
 
 public class Measures
 {
-    public static OpenRatioMeasure GetOpenRatioMeasure(string name, int open, int closed)
-    {
-        var total = open + closed;
-        double openPercentage = total is 0 ? 0 : (open / (float)total);
-        int score = Measures.GetOpenPercentageScore(openPercentage);
-        return new(name, open, score);
-    }
-
     public static bool IsBot(string name) => name?.EndsWith("[bot]") ?? false;
-
-    public static IEnumerable<DateTimeOffset> FilterOutBots(IEnumerable<(DateTimeOffset, string)> values, int count) => 
-        values.Where(v => !v.Item2.EndsWith("[bot]")).Select(v => v.Item1).Take(count);
 
     public static List<TimestampMeasure> GetTimestampsMeasures(List<DateTimeOffset> timestamps, string kind)
     {
@@ -33,7 +22,7 @@ public class Measures
         if (timestamps.Count > 2)
         {
             timestamps.Sort();
-            middle = (int)double.Round(timestamps.Count / 2.0);
+            middle = timestamps.Count / 2;
         }
 
         TimeSpan median = now - timestamps[middle];
@@ -43,7 +32,7 @@ public class Measures
             0 => [],
             1 => Calc((0, first)),
             2 => Calc((0, first), (1, last)),
-            _ => Calc((0, first), (middle, now - timestamps[middle]) ,(timestamps.Count - 1, last))
+            _ => Calc((0, first), (middle, median) ,(timestamps.Count - 1, last))
         };
 
         return set;
@@ -57,6 +46,9 @@ public class Measures
                 int score = Measures.GetIssueLatencyScore(Latency);
                 var measure = new TimestampMeasure(kind, SetIndex, score, Latency);
                 entries.Add(measure);
+#if DEBUG
+    Console.WriteLine(measure);
+#endif
             }
 
             return entries;

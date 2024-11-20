@@ -29,11 +29,14 @@ public class CommitMeasure
         IReadOnlyList<GitHubCommit>? items = null;
         do
         {
-            items = await client.GetAll(repo.Id, new ApiOptions()
+            page++;
+            var options = new ApiOptions()
             {
-                PageCount = page++,
-                PageSize = count
-            });
+                PageSize = count,
+                StartPage = page,
+                PageCount = 1
+            };            
+            items = await client.GetAll(repo.Id, options);
 
             foreach(var item in items)
             {

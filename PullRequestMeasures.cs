@@ -8,13 +8,13 @@ public class PullRequestMeasures
 {
     public static async Task<List<TimestampMeasure>> GetMeasuresForRepo(IPullRequestsClient client, Repository repo, int count)
     {
-        var openRequest = ("open", new PullRequestRequest()
+        var openRequest = ("open PRs", new PullRequestRequest()
             {
                 State = ItemStateFilter.Open,
                 SortProperty = PullRequestSort.Created,
                 SortDirection = SortDirection.Descending,
             });
-        var closedRequest = ("closed", new PullRequestRequest()
+        var closedRequest = ("closed PRs", new PullRequestRequest()
             {
                 State = ItemStateFilter.Closed,
                 SortProperty = PullRequestSort.Created,
@@ -39,7 +39,7 @@ public class PullRequestMeasures
     {
         await foreach (var item in GetItems(client, request, repo, count))
         {
-            yield return new(item.User.Name, item.UpdatedAt);
+            yield return new(item.User.Login, item.UpdatedAt);
         }
     }
 
@@ -49,75 +49,23 @@ public class PullRequestMeasures
         IReadOnlyList<PullRequest>? items = null;
         do
         {
-            items = await client.GetAllForRepository(repo.Id, request, new ApiOptions()
+            page++;
+            var options = new ApiOptions()
             {
-                PageCount = page++,
-                PageSize = count
-            });
+                PageSize = count,
+                StartPage = page,
+                PageCount = 1
+            };
+            items = await client.GetAllForRepository(repo.Id, request, options);
+
+#if DEBUG
+            Console.WriteLine($"items size: {items.Count}");
+#endif
 
             foreach(var item in items)
             {
                 yield return item;
             }
-        } while (items is not null);
+        } while (items.Count > 0);
     }
 }
-
-
-// using Octokit;
-
-// namespace CrackedWheat;
-
-// public class PullRequestMeasures
-// {
-//     public static async Task<(OpenRatioMeasure, List<TimestampMeasure>)> GetMeasuresForRepo(IPullRequestsClient client, Repository repo, int count)
-//     {
-//         var apiOptions = new ApiOptions()
-//         {
-//             PageCount = 1,
-//             PageSize = count
-//         };
-//         var openRequest = new PullRequestRequest()
-//             {
-//                 State = ItemStateFilter.Open,
-//                 SortProperty = PullRequestSort.Updated,
-//                 SortDirection = SortDirection.Descending,
-//             };
-//         var openPulls = await client.GetAllForRepository(repo.Id, openRequest, apiOptions);
-
-//         var closedRequest = new PullRequestRequest()
-//             {
-//                 State = ItemStateFilter.Closed,
-//                 SortProperty = PullRequestSort.Updated,
-//                 SortDirection = SortDirection.Descending
-//             };
-//         var closedPulls = await client.GetAllForRepository(repo.Id, closedRequest, apiOptions);
-
-//         // Get timestamp measures
-//         List<TimestampMeasure> measures = [];
-//         foreach (var (kind, issues) in (ReadOnlySpan<(string, IReadOnlyList<PullRequest>)>)[("open", openPulls), ("closed", closedPulls)])
-//         {
-//             // AddMeasures(issues, count, kind, measures);
-//             var timestamps = GetTimeStamps(issues, count);
-//             var m = Measures.GetTimestampsMeasures(timestamps, kind);
-//             measures.AddRange(m);
-//         }
-
-//         // Get open ratio measures
-//         int openCount = openPulls.Count;
-//         int closedCount = closedPulls.Count;
-//         var ratio = Measures.GetOpenRatioMeasure("pulls", openCount, closedCount);
-//         return (ratio, measures);
-//     }
-
-//     public static IEnumerable<DateTimeOffset> GetTimeStamps(IReadOnlyList<PullRequest>? pulls, int count)
-//     {
-//         if (pulls is null or {Count: 0})
-//         {
-//             return [];
-//         }
-
-//         DateTimeOffset tomorrow = DateTimeOffset.UtcNow.AddDays(1);
-//         return pulls.Take(count).Select( i => i.UpdatedAt);
-//     }
-// }

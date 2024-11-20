@@ -24,17 +24,27 @@ int count = 10;
 
 Console.WriteLine($"Running query for: {user}");
 
+Console.WriteLine($"Name, Score");
 foreach (var repo in repos)
 {
+    if (repo.Archived)
+    {
+        continue;
+    }
+
     Stopwatch watch = Stopwatch.StartNew();
     Score score = new();
     // var commitsTimestampMeasure = await CommitMeasure.GetMeasuresForRepo(commits, repo, count);
     // score.Add(commitsTimestampMeasure);
-    // var issuesTimestampMeasure = await IssueMeasures.GetMeasuresForRepo(issues, repo, count);
-    // score.Add(issuesTimestampMeasure);
+    var issuesTimestampMeasure = await IssueMeasures.GetMeasuresForRepo(issues, repo, count);
+    score.Add(issuesTimestampMeasure);
     var pullsTimestampMeasure = await PullRequestMeasures.GetMeasuresForRepo(pulls, repo, count);
     score.Add(pullsTimestampMeasure);
     
-    Console.WriteLine($"{repo.FullName}; score: {score.Get()}; elapsed (ms): {watch.ElapsedMilliseconds} ");
+#if DEBUG
+    Console.WriteLine($"Query time: {watch.ElapsedMilliseconds}");
+#endif
+
+    Console.WriteLine($"{repo.FullName}, {score.Get()}");
 }
 
