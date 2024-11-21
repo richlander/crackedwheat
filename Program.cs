@@ -10,6 +10,7 @@ string? pat = Environment.GetEnvironmentVariable(PAT_ENV);
 if (string.IsNullOrEmpty(pat))
 {
     Console.WriteLine($"{PAT_ENV} must be set");
+    return;
 }
 
 var client = new GitHubClient(new ProductHeaderValue("org-health-app"))
@@ -27,6 +28,10 @@ Console.WriteLine($"Running query for: {user}");
 Console.WriteLine($"Name, Score");
 foreach (var repo in repos)
 {
+#if DEBUG
+    Console.WriteLine($"Querying {repo.FullName}; Archived: {repo.Archived}");
+#endif
+
     if (repo.Archived)
     {
         continue;
@@ -34,8 +39,8 @@ foreach (var repo in repos)
 
     Stopwatch watch = Stopwatch.StartNew();
     Score score = new();
-    // var commitsTimestampMeasure = await CommitMeasure.GetMeasuresForRepo(commits, repo, count);
-    // score.Add(commitsTimestampMeasure);
+    var commitsTimestampMeasure = await CommitMeasure.GetMeasuresForRepo(commits, repo, count);
+    score.Add(commitsTimestampMeasure);
     var issuesTimestampMeasure = await IssueMeasures.GetMeasuresForRepo(issues, repo, count);
     score.Add(issuesTimestampMeasure);
     var pullsTimestampMeasure = await PullRequestMeasures.GetMeasuresForRepo(pulls, repo, count);

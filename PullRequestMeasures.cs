@@ -26,8 +26,8 @@ public class PullRequestMeasures
         List<(string, PullRequestRequest)> requests = [openRequest, closedRequest];
         foreach (var (kind, request) in requests)
         {
-            var timestamps = GetTimestamps(client, request, repo, count);
-            var requestMeasure = await Measures.GetTimestampMeasuresForRepoItems(timestamps, kind, count);
+            var items = GetRepoItems(client, request, repo, count);
+            var requestMeasure = await Measures.GetTimestampMeasuresForRepoItems(items, kind, count);
             measures.AddRange(requestMeasure);
         }
 
@@ -35,18 +35,18 @@ public class PullRequestMeasures
     }
 
     // Get repo items from raw query
-    public static async IAsyncEnumerable<RepoItem> GetTimestamps(IPullRequestsClient client, PullRequestRequest request, Repository repo, int count)
+    public static async IAsyncEnumerable<RepoItem> GetRepoItems(IPullRequestsClient client, PullRequestRequest request, Repository repo, int count)
     {
-        await foreach (var item in GetItems(client, request, repo, count))
+        await foreach (var pr in GetPullRequests(client, request, repo, count))
         {
-            yield return new(item.User.Login, item.UpdatedAt);
+            yield return new(pr.User.Login, pr.UpdatedAt, pr.Url);
         }
     }
 
-    private static async IAsyncEnumerable<PullRequest> GetItems(IPullRequestsClient client, PullRequestRequest request, Repository repo, int count)
+    private static async IAsyncEnumerable<PullRequest> GetPullRequests(IPullRequestsClient client, PullRequestRequest request, Repository repo, int count)
     {    
         int page = 0;
-        IReadOnlyList<PullRequest>? items = null;
+        IReadOnlyList<PullRequest>? pulls = null;
         do
         {
             page++;
@@ -56,16 +56,16 @@ public class PullRequestMeasures
                 StartPage = page,
                 PageCount = 1
             };
-            items = await client.GetAllForRepository(repo.Id, request, options);
+            pulls = await client.GetAllForRepository(repo.Id, request, options);
 
 #if DEBUG
-            Console.WriteLine($"items size: {items.Count}");
+            Console.WriteLine($"items size: {pulls.Count}");
 #endif
 
-            foreach(var item in items)
+            foreach(var pull in pulls)
             {
-                yield return item;
+                yield return pull;
             }
-        } while (items.Count > 0);
+        } while (pulls.Count >= count);
     }
 }

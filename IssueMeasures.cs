@@ -26,8 +26,8 @@ public class IssueMeasures
         List<(string, RepositoryIssueRequest)> requests = [openRequest, closedRequest];
         foreach (var (kind, request) in requests)
         {
-            var timestamps = GetTimestamps(client, request, repo, count);
-            var requestMeasure = await Measures.GetTimestampMeasuresForRepoItems(timestamps, kind, count);
+            var items = GetRepoItems(client, request, repo, count);
+            var requestMeasure = await Measures.GetTimestampMeasuresForRepoItems(items, kind, count);
             measures.AddRange(requestMeasure);
         }
 
@@ -35,18 +35,18 @@ public class IssueMeasures
     }
 
     // Get repo items from raw query
-    public static async IAsyncEnumerable<RepoItem> GetTimestamps(IIssuesClient client, RepositoryIssueRequest request, Repository repo, int count)
+    public static async IAsyncEnumerable<RepoItem> GetRepoItems(IIssuesClient client, RepositoryIssueRequest request, Repository repo, int count)
     {
-        await foreach (var item in GetItems(client, request, repo, count))
+        await foreach (var issue in GetIssues(client, request, repo, count))
         {
-            yield return new(item.User.Login, item.UpdatedAt ?? DateTimeOffset.MinValue);
+            yield return new(issue.User.Login, issue.UpdatedAt ?? DateTimeOffset.MinValue, issue.Url);
         }
     }
 
-    private static async IAsyncEnumerable<Issue> GetItems(IIssuesClient client, RepositoryIssueRequest request, Repository repo, int count)
+    private static async IAsyncEnumerable<Issue> GetIssues(IIssuesClient client, RepositoryIssueRequest request, Repository repo, int count)
     {    
         int page = 0;
-        IReadOnlyList<Issue>? items = null;
+        IReadOnlyList<Issue>? issues = null;
         do
         {
             page++;
@@ -56,17 +56,17 @@ public class IssueMeasures
                 StartPage = page,
                 PageCount = 1
             };            
-            items = await client.GetAllForRepository(repo.Id, request, options);
+            issues = await client.GetAllForRepository(repo.Id, request, options);
 
-            foreach(var item in items)
+            foreach(var issue in issues)
             {
-                if (item.PullRequest is {})
+                if (issue.PullRequest is {})
                 {
                     continue;
                 }
 
-                yield return item;
+                yield return issue;
             }
-        } while (items.Count > 0);
+        } while (issues.Count >= count);
     }
 }

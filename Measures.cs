@@ -7,25 +7,24 @@ public class Measures
 {
     public static bool IsBot(string name) => name?.EndsWith("[bot]") ?? false;
 
-    public static List<TimestampMeasure> GetTimestampsMeasures(List<DateTimeOffset> timestamps, string kind)
+    public static List<TimestampMeasure> GetTimestampsMeasures(List<RepoItem> timestamps, string kind)
     {
         if (timestamps.Count is 0)
         {
             return [];
         }
 
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        TimeSpan first = now - timestamps.First();
-        TimeSpan last = now - timestamps.Last();
+        RepoItem first = timestamps.First();
+        RepoItem last = timestamps.Last();
         int middle = 0;
 
         if (timestamps.Count > 2)
         {
-            timestamps.Sort();
+            timestamps.Sort(RepoItem.CompareByTimestamp);
             middle = timestamps.Count / 2;
         }
 
-        TimeSpan median = now - timestamps[middle];
+        RepoItem median = timestamps[middle];
 
         List<TimestampMeasure> set = timestamps.Count switch
         {
@@ -37,14 +36,16 @@ public class Measures
 
         return set;
 
-        List<TimestampMeasure> Calc(params ReadOnlySpan<(int SetIndex, TimeSpan Latency)> values)
+        List<TimestampMeasure> Calc(params ReadOnlySpan<(int SetIndex, RepoItem Item)> values)
         {
             List<TimestampMeasure> entries = [];
+            var now = DateTime.UtcNow;
 
-            foreach (var (SetIndex, Latency) in values)
+            foreach (var (SetIndex, Item) in values)
             {
-                int score = Measures.GetIssueLatencyScore(Latency);
-                var measure = new TimestampMeasure(kind, SetIndex, score, Latency);
+                TimeSpan latency = now - Item.Timestamp;
+                int score = Measures.GetIssueLatencyScore(latency);
+                var measure = new TimestampMeasure(kind, SetIndex, score, latency, Item.Location);
                 entries.Add(measure);
 #if DEBUG
     Console.WriteLine(measure);
@@ -57,12 +58,15 @@ public class Measures
 
     public static async Task<List<TimestampMeasure>> GetTimestampMeasuresForRepoItems(IAsyncEnumerable<RepoItem> items, string kind, int count)
     {
-        List<DateTimeOffset> timestamps = [];
+        List<RepoItem> repoItems = [];
         int index = 0;
-        await foreach (var (name, timestamp) in items)
+        // This algorithm is primarily in place to remove bots
+        // and to requests the least number of items in a streaming fashion
+        await foreach (var item in items)
         {
+            string name = item.Author;
             index++;
-            if (timestamps.Count >= count || index > count * 2)
+            if (repoItems.Count >= count || index > count * 2)
             {
                 break;
             }
@@ -74,12 +78,12 @@ public class Measures
                 continue;
             }
 
-            timestamps.Add(timestamp);
+            repoItems.Add(item);
         }
 #if DEBUG
-        Console.WriteLine($"{kind}; requested count: {count}; item count: {timestamps.Count}; index count: {index}");
+        Console.WriteLine($"{kind}; requested count: {count}; item count: {repoItems.Count}; index count: {index}");
 #endif
-        var measures = Measures.GetTimestampsMeasures(timestamps, kind);
+        var measures = Measures.GetTimestampsMeasures(repoItems, kind);
         return measures;
     }
 

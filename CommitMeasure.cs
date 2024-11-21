@@ -8,25 +8,25 @@ public class CommitMeasure
     public static async Task<List<TimestampMeasure>> GetMeasuresForRepo(IRepositoryCommitsClient client, Repository repo, int count)
     {
         var kind = "commits";
-        var timestamps = GetTimestamps(client, repo, count);
-        var measures = await Measures.GetTimestampMeasuresForRepoItems(timestamps, kind, count);
+        var items = GetRepoItems(client, repo, count);
+        var measures = await Measures.GetTimestampMeasuresForRepoItems(items, kind, count);
         return measures;
     }
 
     // Get repo items from raw query
-    public static async IAsyncEnumerable<RepoItem> GetTimestamps(IRepositoryCommitsClient client, Repository repo, int count)
+    public static async IAsyncEnumerable<RepoItem> GetRepoItems(IRepositoryCommitsClient client, Repository repo, int count)
     {
-        await foreach (var commit in GetItems(client, repo, count))
+        await foreach (var commit in GetCommits(client, repo, count))
         {
-            yield return new(commit.Author.Login, commit.Commit.Author.Date);
+            yield return new(commit.Author?.Login ?? "", commit.Commit.Author.Date, commit.Url);
         }
     }
 
     // Raw query
-    private static async IAsyncEnumerable<GitHubCommit> GetItems(IRepositoryCommitsClient client, Repository repo, int count)
+    private static async IAsyncEnumerable<GitHubCommit> GetCommits(IRepositoryCommitsClient client, Repository repo, int count)
     {    
         int page = 0;
-        IReadOnlyList<GitHubCommit>? items = null;
+        IReadOnlyList<GitHubCommit>? commits = null;
         do
         {
             page++;
@@ -36,13 +36,13 @@ public class CommitMeasure
                 StartPage = page,
                 PageCount = 1
             };            
-            items = await client.GetAll(repo.Id, options);
+            commits = await client.GetAll(repo.Id, options);
 
-            foreach(var item in items)
+            foreach(var commit in commits)
             {
-                yield return item;
+                yield return commit;
             }
-        } while (items is not null);
+        } while (commits.Count >= count);
 
     }
 }
