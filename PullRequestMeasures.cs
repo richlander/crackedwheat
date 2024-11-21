@@ -50,13 +50,12 @@ public class PullRequestMeasures
         do
         {
             page++;
-            var options = new ApiOptions()
+            pulls = await client.GetAllForRepository(repo.Id, request, new ApiOptions()
             {
                 PageSize = count,
                 StartPage = page,
                 PageCount = 1
-            };
-            pulls = await client.GetAllForRepository(repo.Id, request, options);
+            });
 
 #if DEBUG
             Console.WriteLine($"items size: {pulls.Count}");

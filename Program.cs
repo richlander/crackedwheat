@@ -3,13 +3,15 @@ using System.Diagnostics.Metrics;
 using CrackedWheat;
 using Octokit;
 
-string user = "dotnet";
-string PAT_ENV = "GITHUB_PAT";
-string? pat = Environment.GetEnvironmentVariable(PAT_ENV);
+const string CW_GITHUB_PAT = "CW_GITHUB_PAT";
+const string CW_ORG = "CW_ORG";
+string? org = Environment.GetEnvironmentVariable(CW_ORG);
+string? pat = Environment.GetEnvironmentVariable(CW_GITHUB_PAT);
 
-if (string.IsNullOrEmpty(pat))
+if (string.IsNullOrEmpty(pat) ||
+    string.IsNullOrEmpty(org))
 {
-    Console.WriteLine($"{PAT_ENV} must be set");
+    Console.WriteLine($"{CW_GITHUB_PAT} and {CW_ORG} must be set");
     return;
 }
 
@@ -17,15 +19,20 @@ var client = new GitHubClient(new ProductHeaderValue("org-health-app"))
 {
     Credentials = new(pat)
 };
-var repos = await client.Repository.GetAllForOrg(user);
+
+var repos = await client.Repository.GetAllForOrg(org);
 var issues = client.Issue;
 var pulls = client.PullRequest;
 var commits = client.Repository.Commit;
 int count = 10;
 
-Console.WriteLine($"Running query for: {user}");
+#if DEBUG
+Console.WriteLine($"Running query for: {org}");
+#endif
 
-Console.WriteLine($"Name, Score");
+Console.WriteLine($"Name,Score");
+int totalScore = 0;
+int repoCount = 0;
 foreach (var repo in repos)
 {
 #if DEBUG
@@ -50,6 +57,11 @@ foreach (var repo in repos)
     Console.WriteLine($"Query time: {watch.ElapsedMilliseconds}");
 #endif
 
-    Console.WriteLine($"{repo.FullName}, {score.Get()}");
+    int repoScore = score.Get();
+    Console.WriteLine($"{repo.FullName},{repoScore}");
+    totalScore += repoScore;
+    repoCount++;
 }
+
+Console.WriteLine($"{org},{totalScore / repoCount}");
 

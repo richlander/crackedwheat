@@ -98,6 +98,7 @@ public class Measures
         _ => 0
     };
 
+    // This was an experiment for open issue percentage
     public static int GetOpenPercentageScore(double percentage) => percentage switch
     {
         var p when p < .01   => 10,

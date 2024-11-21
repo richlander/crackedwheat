@@ -30,13 +30,12 @@ public class CommitMeasure
         do
         {
             page++;
-            var options = new ApiOptions()
+            commits = await client.GetAll(repo.Id, new ApiOptions()
             {
                 PageSize = count,
                 StartPage = page,
                 PageCount = 1
-            };            
-            commits = await client.GetAll(repo.Id, options);
+            });
 
             foreach(var commit in commits)
             {

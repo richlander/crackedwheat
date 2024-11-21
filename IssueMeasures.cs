@@ -50,13 +50,12 @@ public class IssueMeasures
         do
         {
             page++;
-            var options = new ApiOptions()
+            issues = await client.GetAllForRepository(repo.Id, request, new ApiOptions()
             {
                 PageSize = count,
                 StartPage = page,
                 PageCount = 1
-            };            
-            issues = await client.GetAllForRepository(repo.Id, request, options);
+            });
 
             foreach(var issue in issues)
             {
